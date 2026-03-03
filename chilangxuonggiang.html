@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trận Chi Lăng - Xương Giang</title>
+    <style>
+        /* --- CẤU HÌNH CHUNG --- */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; font-family: 'Times New Roman', serif; overflow: hidden; user-select: none; color: white; }
+        
+        /* VIDEO NỀN */
+        #bg-video {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1;
+            transition: filter 2s ease;
+        }
+        .video-blur { filter: blur(5px) brightness(0.4); } /* Hiệu ứng mờ khi sợ hãi */
+
+        /* LỚP PHỦ */
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 0;
+            transition: background 2s;
+        }
+
+        /* NỘI DUNG CHÍNH (CANH GIỮA) */
+        .center-content {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; text-align: center; z-index: 10;
+        }
+
+        /* TEXT STYLES */
+        .title { font-size: 50px; font-weight: bold; color: #ffd700; text-shadow: 3px 3px 0 #b22222; margin-bottom: 10px; animation: zoomIn 1s; }
+        .date { font-size: 24px; font-style: italic; margin-bottom: 30px; color: #ccc; }
+        .story-text { font-size: 26px; line-height: 1.6; text-shadow: 1px 1px 2px black; min-height: 100px; }
+        
+        /* Text lúc kinh hãi */
+        .scary-text { color: #ff4500; font-weight: bold; text-shadow: 0 0 10px red; }
+
+        /* KHUNG THOẠI LIỄU THĂNG */
+        #dialogue-area {
+            position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 1000px; display: none; align-items: flex-end; z-index: 20;
+        }
+        .avatar-frame {
+            width: 150px; height: 180px; border: 3px solid #ff0000; background: #000;
+            margin-right: 20px; flex-shrink: 0;
+        }
+        .avatar-frame img { width: 100%; height: 100%; object-fit: cover; }
+        .dialogue-box {
+            flex-grow: 1; background: rgba(20, 0, 0, 0.9); border: 2px solid #ff4500;
+            padding: 20px; border-radius: 10px; min-height: 120px; position: relative;
+        }
+        .char-name { color: #ff0000; font-size: 24px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #555; display: inline-block;}
+        .char-lines { font-size: 20px; font-style: italic; line-height: 1.5; color: #fff; }
+
+        /* CÂU HỎI TRẮC NGHIỆM */
+        #quiz-area {
+            display: none; width: 100%; text-align: center; margin-top: 20px;
+        }
+        .quiz-btn {
+            display: block; width: 80%; margin: 10px auto; padding: 15px;
+            font-size: 18px; color: #ffd700; background: rgba(0,0,0,0.8);
+            border: 2px solid #ffd700; cursor: pointer; transition: 0.3s;
+        }
+        .quiz-btn:hover { background: #b22222; color: white; }
+
+        /* MÀN HÌNH CHIẾN THẮNG (XƯƠNG GIANG) */
+        #victory-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: none; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .victory-main {
+            font-size: 60px; color: #ffd700; font-weight: 900; 
+            text-shadow: 0 0 20px #ff0000; text-align: center;
+            border-top: 3px solid #ffd700; border-bottom: 3px solid #ffd700;
+            padding: 30px 0; margin-top: 30px; animation: pulse 2s infinite;
+        }
+
+        /* Nút chung */
+        .next-btn {
+            margin-top: 20px; padding: 10px 30px; font-size: 18px; color: #fff;
+            background: #b22222; border: 1px solid #ffd700; cursor: pointer;
+        }
+
+        @keyframes zoomIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes pulse { 0% { text-shadow: 0 0 10px #ff0000; } 50% { text-shadow: 0 0 30px #ff4500; } 100% { text-shadow: 0 0 10px #ff0000; } }
+    </style>
+</head>
+<body>
+
+    <audio id="chaos-sound" src="chaos.mp3" loop></audio>
+    <audio id="wind-sound" src="tienggio.mp3" loop></audio>
+    <audio id="voice-lieuthang" src="lieuthangnoi.mp3"></audio>
+
+    <video id="bg-video" src="clxl.mp4" muted loop></video>
+    <div id="overlay"></div>
+
+    <div id="scene-content" class="center-content">
+        <div class="title">TRẬN CHI LĂNG - XƯƠNG GIANG</div>
+        <div class="date">(8/10/1427)</div>
+        <div id="story-text" class="story-text"></div>
+        <button id="btn-start" class="next-btn" onclick="startScene()">BẮT ĐẦU TRẬN ĐÁNH</button>
+    </div>
+
+    <div id="dialogue-area">
+        <div class="avatar-frame"><img src="lieuthang.jpg"></div>
+        <div class="dialogue-box">
+            <div class="char-name">Tổng Binh Liễu Thăng</div>
+            <div id="lieuthang-text" class="char-lines"></div>
+            
+            <div id="quiz-area">
+                <p style="color: #ccc; margin-bottom: 10px;">(Hắn đang lẩm bẩm điều gì?)</p>
+                <button class="quiz-btn" onclick="checkAnswer(1)">
+                    “Hai hốc đá… như mắt quỷ đang nhìn ta… Quỷ Môn Quan…”
+                </button>
+                <button class="quiz-btn" onclick="checkAnswer(2)">
+                    "Quỷ Môn Quan ư? Nếu có quỷ, ta chém quỷ! Nếu có trời, ta phá trời!"
+                </button>
+            </div>
+            
+            <button id="btn-next-dialogue" class="next-btn" style="display:none; float: right;" onclick="showQuiz()">TIẾP TỤC >></button>
+        </div>
+    </div>
+
+    <div id="victory-screen">
+        <div class="title" style="color: #ff4500;">TẠI XƯƠNG GIANG</div>
+        <div id="victory-text" class="story-text" style="width: 80%; text-align: center;"></div>
+        <div id="final-banner" class="victory-main" style="display: none;">
+            ĐẤT NƯỚC ĐẠI VIỆT<br>TOÀN THẮNG LỢI
+        </div>
+        <button class="next-btn" onclick="location.reload()" style="margin-top: 50px;">CHƠI LẠI</button>
+    </div>
+
+    <script>
+        // --- CÁC HÀM HỖ TRỢ ---
+        function typeWriter(text, elementId, speed, callback) {
+            let i = 0; const el = document.getElementById(elementId); el.innerHTML = "";
+            function type() {
+                if (i < text.length) { el.innerHTML += text.charAt(i); i++; setTimeout(type, speed); }
+                else { if (callback) callback(); }
+            }
+            type();
+        }
+
+        function playSound(id, vol=1.0) {
+            const audio = document.getElementById(id);
+            if(audio) { audio.volume = vol; audio.currentTime = 0; audio.play().catch(e=>{}); }
+        }
+        function stopSound(id) { const audio = document.getElementById(id); if(audio) audio.pause(); }
+
+        // --- 1. BẮT ĐẦU ---
+        function startScene() {
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('bg-video').play();
+            playSound('chaos-sound', 0.6);
+
+            const text1 = "Đạo quân của Liễu Thăng tấn công Pha Lũy. Quân ta vừa đánh vừa lui để nhử giặc vào ải Chi Lăng đã mai phục => Giặc Minh thua to.";
+            typeWriter(text1, 'story-text', 40, () => {
+                setTimeout(phaseFear, 2000); // Chuyển sang đoạn kinh hãi
+            });
+        }
+
+        // --- 2. LIỄU THĂNG KINH HÃI ---
+        function phaseFear() {
+            // Hiệu ứng hình ảnh
+            document.getElementById('bg-video').classList.add('video-blur');
+            document.getElementById('overlay').style.backgroundColor = "rgba(0,0,0,0.8)";
+            
+            // Âm thanh
+            stopSound('chaos-sound');
+            playSound('wind-sound', 1.0);
+
+            // Đổi màu chữ
+            const textBox = document.getElementById('story-text');
+            textBox.classList.add('scary-text');
+
+            const text2 = "Liễu Thăng quá kinh hãi vì thấy Quỷ Môn Quan (núi mặt quỷ) như đang nhìn thẳng vào hắn. Một tia sét đánh xuống!";
+            typeWriter(text2, 'story-text', 40, () => {
+                setTimeout(phaseDialogue, 2000); // Chuyển sang hội thoại
+            });
+        }
+
+        // --- 3. HỘI THOẠI ---
+        function phaseDialogue() {
+            document.getElementById('scene-content').style.display = 'none';
+            document.getElementById('dialogue-area').style.display = 'flex';
+            
+            playSound('voice-lieuthang');
+
+            const lines = `“……等等。”\n“那悬崖……为什么看起来像一张脸？”\n“两道岩石缝隙……像恶魔的眼睛盯着我……”\n“……通往地狱的入口……”\n（静静地站着)`;
+            
+            // Chạy chữ thoại (dùng innerText để giữ xuống dòng)
+            const el = document.getElementById('lieuthang-text');
+            el.innerText = "";
+            let i = 0;
+            function typeLines() {
+                if (i < lines.length) { el.innerText += lines.charAt(i); i++; setTimeout(typeLines, 30); }
+                else { document.getElementById('btn-next-dialogue').style.display = 'block'; }
+            }
+            typeLines();
+        }
+
+        // --- 4. HIỆN CÂU HỎI ---
+        function showQuiz() {
+            document.getElementById('btn-next-dialogue').style.display = 'none';
+            document.getElementById('quiz-area').style.display = 'block';
+        }
+
+        // --- 5. XỬ LÝ ĐÁP ÁN ---
+        function checkAnswer(choice) {
+            if (choice === 1) {
+                // ĐÚNG -> Chết -> Qua màn Xương Giang
+                alert("CHÍNH XÁC! Hắn đã bị nỗi sợ nuốt chửng và tử trận!");
+                phaseVictory();
+            } else {
+                // SAI -> Chọn lại
+                alert("SAI RỒI! Hắn đang sợ hãi tột độ, không thể mạnh miệng như vậy được!");
+            }
+        }
+
+        // --- 6. XƯƠNG GIANG & CHIẾN THẮNG ---
+        function phaseVictory() {
+            stopSound('wind-sound');
+            stopSound('voice-lieuthang');
+            
+            document.getElementById('dialogue-area').style.display = 'none';
+            document.getElementById('scene-content').style.display = 'none'; // Ẩn hẳn scene cũ
+            document.getElementById('bg-video').style.display = 'none'; // Ẩn video cũ
+            
+            // Hiện màn hình đen Xương Giang
+            const victoryScreen = document.getElementById('victory-screen');
+            victoryScreen.style.display = 'flex';
+
+            // Có thể bật lại nhạc hào hùng ở đây nếu muốn
+            // playSound('victory-sound'); 
+
+            const textFinal = "Sau khi Liễu Thăng chết, quân ta tiếp tục truy kích, tiêu diệt các tướng giặc Lương Minh, Thôi Tụ. Toàn bộ viện binh bị tiêu diệt. Quân Minh xin hàng và rút về nước.";
+            
+            typeWriter(textFinal, 'victory-text', 40, () => {
+                setTimeout(() => {
+                    document.getElementById('final-banner').style.display = 'block';
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+</html>

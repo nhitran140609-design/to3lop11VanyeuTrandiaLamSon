@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khởi Nghĩa Lam Sơn</title>
+    
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+    <style>
+        /* =========================================
+           1. THIẾT LẬP CHUNG
+           ========================================= */
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: #000; font-family: 'Times New Roman', serif; 
+            overflow: hidden; color: #fff; user-select: none; cursor: default;
+        }
+
+        /* Nút bấm chung */
+        .game-btn { 
+            margin-top: 15px; padding: 10px 30px; font-size: 16px; 
+            color: #ffd700; border: 1px solid #ffd700; background: rgba(0,0,0,0.8); 
+            cursor: pointer; text-transform: uppercase; letter-spacing: 2px; 
+            transition: 0.3s; z-index: 100; border-radius: 5px; 
+        }
+        .game-btn:hover { background: #ffd700; color: #000; box-shadow: 0 0 15px #ffd700; }
+
+        /* Lớp xóa nền đen */
+        .remove-black-bg { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: screen; }
+
+        /* Ảnh nền full màn hình */
+        .full-bg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-size: cover; background-position: center; transition: opacity 1.5s ease-in-out; }
+
+        /* Hiệu ứng nhấp nháy con trỏ */
+        .cursor { display: inline-block; width: 10px; height: 3px; background: #ffd700; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* Màn hình chờ chuyển chặng */
+        #stage-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 90; }
+        .stage-title { font-size: 40px; color: #ffd700; font-weight: bold; text-align: center; text-shadow: 0 0 20px #ff0000; margin-bottom: 30px; animation: zoomIn 0.5s ease-out; border-bottom: 2px solid #ffd700; padding-bottom: 10px; }
+        .stage-desc { font-size: 20px; color: #ddd; margin-bottom: 40px; font-style: italic; }
+        @keyframes zoomIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+        /* =========================================
+           2. STYLE CÁC CẢNH CŨ (GIỮ NGUYÊN)
+           ========================================= */
+        #main-menu { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 9999; transition: opacity 1s ease-in-out; background-color: #000; }
+        .start-text { font-size: 32px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; cursor: pointer; text-align: center; color: #fff; text-shadow: 0 0 5px #ffd700, 0 0 10px #ffd700, 0 0 20px #ff8c00; transition: all 0.3s ease; animation: pulse 2s infinite; padding: 20px; border: 1px solid transparent; }
+        .start-text:hover { transform: scale(1.1); text-shadow: 0 0 20px #ffd700; border: 1px solid #ffd700; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
+        #intro-scene { display: none; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 5; background-color: #000; padding: 0 10%; box-sizing: border-box; }
+        .intro-text { color: #e0e0e0; font-size: 19px; line-height: 1.6; text-align: justify; width: 100%; max-width: 1000px; margin-bottom: 20px; opacity: 0; transform: translateY(20px); transition: opacity 2s ease-out, transform 2s ease-out; }
+        .intro-text.visible { opacity: 1; transform: translateY(0); }
+        .highlight { color: #ffd700; font-weight: bold; font-size: 24px; margin-top: 30px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); text-align: center; border-top: 1px solid #333; padding-top: 20px; }
+        #skip-intro-btn { position: absolute; top: 30px; right: 30px; padding: 10px 20px; font-size: 14px; color: #aaa; border: 1px solid #555; background: rgba(0,0,0,0.5); cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; z-index: 100; border-radius: 5px; }
+        #skip-intro-btn:hover { color: #ffd700; border-color: #ffd700; background: rgba(255, 215, 0, 0.1); }
+        #next-btn { margin-top: 20px; padding: 10px 30px; font-size: 17px; color: #ffd700; border: 1px solid #ffd700; background: transparent; cursor: pointer; opacity: 0; transition: all 0.5s; text-transform: uppercase; letter-spacing: 2px; }
+        #next-btn.show { opacity: 1; }
+
+        /* KHUNG THOẠI CHUẨN */
+        .dialogue-box-style { position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%) translateY(50px); width: 80%; max-width: 1000px; height: 240px; background: linear-gradient(to right, #8b0000, #3a0000); border: 3px solid #ffd700; border-radius: 8px; display: none; align-items: center; box-shadow: 0 10px 40px rgba(0,0,0,0.9); opacity: 0; transition: all 0.5s ease; z-index: 20; }
+        .dialogue-box-style.active { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+        .avatar-frame { width: 160px; height: 180px; flex-shrink: 0; margin: 0 20px; border: 2px solid #d4af37; overflow: hidden; background: #000; box-shadow: 3px 3px 10px rgba(0,0,0,0.5); }
+        .avatar-frame img { width: 100%; height: 100%; object-fit: cover; }
+        .dialogue-content { flex-grow: 1; padding-right: 20px; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+        .char-name { color: #ffd700; font-size: 24px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; text-shadow: 1px 1px 2px #000; border-bottom: 1px solid rgba(255,215,0,0.3); padding-bottom: 5px; display: inline-block; }
+        .char-text { font-size: 19px; line-height: 1.4; font-style: italic; font-family: 'Times New Roman', serif; min-height: 80px; }
+        .narrative-alert { color: #ff6666; font-weight: bold; margin-top: 10px; font-size: 18px; display: none; animation: flash 2s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* CÁC CẢNH 3-14 (Rút gọn style để đỡ dài, nhưng code logic vẫn full) */
+        #scene-3 { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 4; overflow: hidden; }
+        #bg-video { width: 100%; height: 100%; object-fit: cover; transition: filter 1s ease; }
+        #bg-video.blurred { filter: blur(8px) brightness(0.4); }
+        #scene3-caption { position: absolute; bottom: 15%; width: 100%; text-align: center; font-size: 24px; font-weight: bold; font-style: italic; color: #fff; text-shadow: 2px 2px 4px #000; z-index: 10; transition: opacity 0.5s; pointer-events: none; animation: floatText 3s infinite ease-in-out; }
+        @keyframes floatText { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        #btn-to-scene4 { display: none; align-self: flex-end; margin-top: 5px; }
+
+        /* ... (Các style cũ của Cảnh 4-14 giữ nguyên, không xóa gì hết) ... */
+        #scene-4, #scene-5, #scene-6, #scene-7, #scene-8, #scene-9, #scene-10, #scene-11, #scene-12, #scene-13, #scene-14 { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 4; overflow: hidden; }
+        #s4-bg1 { background-image: url('nuichilinhmain.png'); z-index: 1; }
+        #s4-bg2 { background-image: url('nuichilinh2.jpg'); z-index: 2; opacity: 0; }
+        #s4-bg3 { background-image: url('nuichilinh.webp'); z-index: 3; opacity: 0; }
+        #s4-text-container { position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); width: 80%; background: rgba(0,0,0,0.8); padding: 20px; border-left: 5px solid #ffd700; color: #fff; font-size: 22px; z-index: 10; font-style: italic; line-height: 1.6; text-align: center; display: none; display: flex; flex-direction: column; align-items: center; }
+        #btn-start-stage1 { display: none; margin-top: 20px; }
+        #fisherman-container, #archer-container { position: absolute; z-index: 20; display: none; cursor: pointer; }
+        #fisherman-container { bottom: 5%; left: 50%; transform: translateX(-50%); width: 450px; height: 650px; animation: sway 3s infinite ease-in-out; }
+        #archer-container { bottom: 5%; right: 5%; width: 350px; height: 500px; cursor: crosshair; }
+        @keyframes sway { 0%, 100% { transform: translateX(-50%) rotate(-1deg); } 50% { transform: translateX(-50%) rotate(1deg); } }
+        #fishing-hint, #hunting-hint { position: absolute; top: -70px; left: 50%; transform: translateX(-50%); background: rgba(200,0,0,0.9); color: #fff; padding: 10px 25px; border-radius: 20px; white-space: nowrap; font-size: 22px; font-weight: bold; border: 2px solid #ffd700; }
+        .arrow { position: absolute; bottom: 250px; right: 200px; width: 20px; height: auto; z-index: 15; pointer-events: none; mix-blend-mode: screen; display: none; }
+        @keyframes flyArrow { 0% { transform: translate(0, 0) rotate(-135deg); opacity: 1; } 100% { transform: translate(-900px, -900px) rotate(-135deg); opacity: 0; } }
+        #reward-popup { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center; z-index: 100; background: rgba(0,0,0,0.9); padding: 40px; border-radius: 20px; border: 4px solid #ffd700; box-shadow: 0 0 60px rgba(255, 215, 0, 0.6); }
+        #reward-popup img { width: 350px; mix-blend-mode: screen; animation: zoomIn 0.5s forwards; filter: drop-shadow(0 0 30px #ffd700) brightness(1.2); }
+        @keyframes zoomIn { from { transform: scale(0); } to { transform: scale(1); } }
+        #reward-text { font-size: 26px; color: #ffd700; margin-top: 20px; text-shadow: 2px 2px 0 #000; text-align: center; font-weight: bold; line-height: 1.5; }
+        #s5-video { width: 100%; height: 100%; object-fit: cover; }
+        #s5-caption { position: absolute; bottom: 10%; width: 100%; text-align: center; font-size: 32px; font-weight: bold; font-style: italic; color: #fff; text-shadow: 2px 2px 4px #000, 0 0 20px #ff0000; z-index: 10; animation: floatText 3s infinite ease-in-out; transition: opacity 1s; }
+        #s5-video.blurred { filter: blur(8px) brightness(0.5); transition: filter 1s ease; }
+        #btn-to-3d { display: none; margin-top: 10px; align-self: flex-end; }
+        #s6-bg { background-image: url('nghiaquan.jpg'); background-size: cover; background-position: center; }
+        #horse-hotspot { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150px; height: 150px; border: 2px dashed rgba(255,215,0, 0.5); border-radius: 50%; cursor: pointer; z-index: 20; animation: pulseGlow 2s infinite; }
+        #horse-hotspot:hover { background: rgba(255,215,0, 0.2); border-color: #ffd700; }
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); } }
+        #model-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: none; justify-content: center; align-items: center; }
+        .model-content { width: 90%; height: 80%; display: flex; border: 2px solid #ffd700; border-radius: 10px; background: linear-gradient(135deg, #1a0000 0%, #000000 100%); box-shadow: 0 0 50px #ffd700; overflow: hidden; position: relative; }
+        .model-text { width: 35%; padding: 40px; color: #e0e0e0; font-size: 18px; line-height: 1.6; border-right: 1px solid #555; display: flex; flex-direction: column; justify-content: center; text-align: justify; }
+        .model-viewer-container { width: 65%; height: 100%; position: relative; }
+        model-viewer { width: 100%; height: 100%; background-color: #222; }
+        .close-3d-btn { position: absolute; top: 10px; right: 20px; font-size: 30px; color: #fff; cursor: pointer; z-index: 200; }
+        .close-3d-btn:hover { color: red; }
+        #s7-bg { background-image: url('nuimuongmot.jpg'); background-size: cover; background-position: center; }
+        #s7-video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 30; background: #000; }
+        #s7-video { width: 100%; height: 100%; object-fit: cover; }
+        .ambush-item { position: absolute; width: 100px; height: 100px; cursor: pointer; z-index: 50; transition: transform 0.1s; animation: glowYellow 1s infinite alternate; }
+        .ambush-item:active { transform: scale(0.9); }
+        .ambush-item img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: screen; }
+        @keyframes glowYellow { from { filter: drop-shadow(0 0 5px #ffd700); } to { filter: drop-shadow(0 0 20px #ffd700) brightness(1.5); } }
+        #rock-left { top: 20%; left: 10%; display: none; }
+        #rock-right { top: 20%; right: 10%; display: none; }
+        #bow-center { top: 10%; left: 50%; transform: translateX(-50%); width: 150px; height: 150px; display: none; }
+        .falling-rock { position: absolute; width: 80px; height: 80px; z-index: 40; pointer-events: none; mix-blend-mode: screen; }
+        @keyframes dropRock { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(800px) rotate(360deg); opacity: 0; } }
+        .falling-arrow-down { position: absolute; width: 30px; height: auto; z-index: 40; pointer-events: none; mix-blend-mode: screen; }
+        @keyframes rainArrow { 0% { transform: translateY(0) rotate(180deg); opacity: 1; } 100% { transform: translateY(800px) rotate(180deg); opacity: 0; } }
+        #s7-narrative-box { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); width: 70%; background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid #ffd700; border-radius: 10px; color: #fff; text-align: center; font-size: 22px; display: none; z-index: 60; }
+        #victory-btn { margin-top: 20px; padding: 15px 40px; font-size: 20px; background: #b22222; color: #fff; border: 2px solid #ffd700; cursor: pointer; display: none; animation: pulse 1s infinite; }
+        #s8-video { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; }
+        #s8-overlay { width: 100%; height: 100%; background: rgba(0,0,0,0.5); position: absolute; z-index: 2; }
+        #s8-title { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 40px; color: #ffd700; font-weight: bold; text-shadow: 0 0 10px #ff0000; z-index: 10; animation: zoomIn 1s; }
+        #s8-intro-text { position: absolute; top: 25%; left: 50%; transform: translateX(-50%); width: 70%; text-align: center; font-size: 22px; line-height: 1.5; color: #eee; z-index: 10; font-style: italic; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; }
+        #lelai-container { position: absolute; bottom: 5%; right: 15%; width: 300px; height: 500px; z-index: 20; cursor: pointer; display: none; animation: floatText 3s infinite ease-in-out; }
+        #lelai-container img { width: 100%; height: 100%; object-fit: contain; }
+        .click-hint { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 5px 10px; border-radius: 5px; font-weight: bold; font-size: 14px; white-space: nowrap; animation: bounce 1s infinite; }
+        #s9-video { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; }
+        #lelai-attack-container { position: absolute; top: 20%; left: 50%; transform: translateX(-50%) scale(0.1); width: 300px; z-index: 100; transition: all 3s ease-in; cursor: pointer; }
+        #lelai-attack-container.charge { top: 60%; transform: translateX(-50%) scale(1.5); }
+        #lelai-attack-container img { width: 100%; object-fit: contain; }
+        #s9-shout-box { bottom: 10%; border-color: red; display: none; z-index: 50; pointer-events: none; }
+        #s9-narrative-box { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); width: 70%; background: rgba(0,0,0,0.9); padding: 30px; border: 4px solid #b22222; border-radius: 10px; color: #ffd700; text-align: center; font-size: 26px; display: none; z-index: 110; box-shadow: 0 0 50px rgba(255,0,0,0.5); }
+        #s10-title { position: absolute; top: 15%; width: 100%; text-align: center; font-size: 45px; font-weight: bold; color: #fff; text-shadow: 0 0 20px #ffd700, 0 0 40px #ff8c00; opacity: 0; transition: opacity 2s; z-index: 10; }
+        .poetry-text { margin-top: 20px; font-style: italic; color: #ffd700; text-align: center; font-weight: bold; font-size: 24px; text-shadow: 1px 1px 2px #000; }
+        #s11-video, #s12-video { width: 100%; height: 100%; object-fit: cover; }
+        .cinematic-title-box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; text-align: center; z-index: 10; background: rgba(0,0,0,0.6); padding: 40px 0; border-top: 3px solid #ffd700; border-bottom: 3px solid #ffd700; box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); animation: fadeInZoom 1.5s forwards; }
+        .cinematic-text { font-size: 50px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 20px #ffd700, 2px 2px 0 #000; font-family: 'Times New Roman', serif; }
+        .click-to-continue { position: absolute; bottom: 10%; width: 100%; text-align: center; color: #ffd700; font-size: 16px; animation: blink 1.5s infinite; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; text-shadow: 1px 1px 2px #000; }
+        @keyframes fadeInZoom { from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        #s13-video { width: 100%; height: 100%; object-fit: cover; }
+        #s13-title-box { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); border: 2px solid #ffd700; padding: 10px 30px; background: rgba(0,0,0,0.7); font-size: 30px; color: #ffd700; font-weight: bold; text-transform: uppercase; z-index: 10; animation: slideDown 1s; }
+        .highlight-victory { color: #ffff00; text-shadow: 2px 2px 0 #ff0000; font-weight: bold; font-size: 24px; display: block; margin-top: 20px; animation: pulse 1s infinite; }
+        @keyframes slideDown { from { top: -100px; } to { top: 10%; } }
+        #s14-intro-text { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; color: #eee; font-size: 22px; font-style: italic; background: rgba(0,0,0,0.7); padding: 20px; border: 1px solid #555; display: none; z-index: 10; }
+        #s14-narrative-box { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); width: 80%; background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid #ffd700; border-radius: 10px; color: #fff; text-align: center; font-size: 20px; line-height: 1.6; display: none; z-index: 10; }
+
+        /* CẢNH 15: TRẬN KHẢ LƯU (MỚI - ĐỐT TRẠI) */
+        #scene-15 { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 4; overflow: hidden; background: #000; }
+        #s15-bg { background-size: cover; background-position: center; transition: background-image 1s; }
+        /* Trại nhỏ để bấm vào */
+        #camp-trigger { position: absolute; bottom: 20%; right: 10%; width: 100px; height: 100px; cursor: pointer; animation: pulseGlow 1s infinite; z-index: 20; display: none; }
+        #camp-trigger img { width: 100%; }
+        /* Game Đốt Trại */
+        #camp-game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 50; background: rgba(0,0,0,0.7); }
+        .enemy-camp { position: absolute; width: 120px; height: 100px; } /* Lều trại */
+        .enemy-camp img { width: 100%; height: 100%; object-fit: contain; }
+        /* Con trỏ lửa */
+        #fire-cursor { position: absolute; width: 80px; height: 80px; pointer-events: none; z-index: 100; display: none; transform: translate(-50%, -50%); }
+        #fire-cursor img { width: 100%; height: 100%; object-fit: contain; }
+        /* Hướng dẫn */
+        #burn-instruction { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 24px; color: #ffd700; font-weight: bold; text-shadow: 0 0 10px #ff4500; animation: blink 1s infinite; }
+        /* Kết thúc */
+        #s15-final-box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 4px solid #ffd700; padding: 40px; text-align: center; display: none; z-index: 100; width: 70%; }
+        #s15-final-text { font-size: 22px; color: #fff; line-height: 1.5; }
+        #s15-final-title { font-size: 30px; color: #ffd700; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; }
+/* CẢNH 16: TẤN CÔNG NGHỆ AN (CHUẨN CHỈNH) */
+    #s16-bg { width: 100%; height: 100%; background-image: url('nguyentraidoithoai.jpg'); background-size: cover; background-position: center; transition: filter 1s ease; }
+    #s16-bg.blurred { filter: blur(8px) brightness(0.4); }
+    #s16-intro-title { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 40px; font-weight: bold; color: #ffd700; text-shadow: 2px 2px 4px #ff0000; z-index: 10; opacity: 0; transition: opacity 1s; }
+    #s16-intro-desc { position: absolute; top: 25%; width: 100%; text-align: center; font-size: 24px; color: #eee; font-style: italic; opacity: 0; transition: opacity 1s; z-index: 10; background: rgba(0,0,0,0.5); padding: 10px; }
+    #letter-icon { position: absolute; width: 120px; cursor: pointer; z-index: 20; display: none; animation: flyingLetter 6s infinite ease-in-out; }
+    @keyframes flyingLetter { 0% { top: 40%; left: 10%; transform: rotate(-10deg); } 50% { top: 30%; left: 80%; transform: rotate(10deg); } 100% { top: 40%; left: 10%; transform: rotate(-10deg); } }
+    #letter-icon img { width: 100%; filter: drop-shadow(0 0 10px #ffd700); }
+    /* STYLE RIÊNG CHO KHUNG NGUYỄN TRÃI */
+    #s16-dialogue-box .char-name { color: #00ffff; border-color: #00ffff; }
+    #s16-dialogue-box .avatar-frame { border-color: #00ffff; }
+    #s16-conclusion { position: absolute; bottom: 15%; width: 90%; left: 50%; transform: translateX(-50%); text-align: center; font-size: 24px; color: #ffd700; font-weight: bold; background: rgba(0,0,0,0.9); padding: 20px; border-radius: 10px; border: 2px solid #ff4500; display: none; z-index: 60; }
+    </style>
+</head>
+<body>
+
+    <audio id="click-sound" src="ui.click.mp3"></audio>
+    <audio id="intro-voice" src="voice.mp3.mp3"></audio>
+    <audio id="quanta-sound" src="quanta.mp3"></audio> 
+    <audio id="leloi-voice" src="leloivoice1.mp3"></audio> 
+    <audio id="scene3-bgm" src="scence 3.mp3"></audio> 
+    <audio id="s4-audio2" src="tiengnuichim.mp3"></audio>
+    <audio id="reward-sound" src="reward.mp3"></audio>
+    <audio id="batca-sound" src="batca.mp3"></audio>
+    <audio id="tiengten-sound" src="tiengten.mp3"></audio>
+    <audio id="tiengtrong-sound" src="tiengtrong.mp3"></audio>
+    <audio id="leloicatluong-voice" src="leloicatluongthuc.mp3"></audio>
+    <audio id="trongvang-sound" src="trongvang.mp3"></audio>
+    <audio id="daroi-sound" src="daroi.mp3"></audio>
+    <audio id="chaos-sound" src="chaos.mp3"></audio>
+    <audio id="leloihoi-bgm" src="leloihoi.mp3"></audio>
+    <audio id="leloikytin-voice" src="leloikytin.mp3"></audio>
+    <audio id="lelaixin-sound" src="lelaixin.mp3"></audio>
+    <audio id="lelaidoiao-voice" src="lelaithanxindoiao.mp3"></audio>
+    <audio id="lelaitalachua-voice" src="lelaitalachua.mp3"></audio>
+    <audio id="lelaithoai-sound" src="lelaithoai.mp3"></audio>
+    <audio id="namtien-sound" src="namtien.mp3"></audio>
+    <audio id="giongdocnamtien-voice" src="giongdocnamtien.mp3"></audio>
+    <audio id="leloigiacdongta-voice" src="leloigiacdongta.mp3"></audio>
+    
+    <audio id="leloisommuon-voice" src="leloisommuon.mp3"></audio>
+    <audio id="dottrai-sound" src="dottrai.mp3"></audio>
+    <audio id="chucmung-sound" src="chucmung.mp3"></audio>
+    <audio id="nguyentraithu-voice" src="nguyentraithu.mp3"></audio>
+
+    <div id="main-menu"><div class="start-text" onclick="runGame()">BẤM VÀO ĐÂY ĐỂ THAM GIA CHIẾN TRẬN</div></div>
+
+    <div id="intro-scene">
+        <button id="skip-intro-btn" onclick="skipIntro()">Bỏ qua giới thiệu >></button>
+        <p class="intro-text" id="p1">Sau khi triều Hồ sụp đổ, vó ngựa phương Bắc tràn qua biên ải, bóng cờ Đại Minh phủ kín non sông Đại Việt. Đất nước bị xóa tên trên bản đồ độc lập, bị hạ xuống thành quận Giao Chỉ – một mảnh đất bị cai trị, bị áp đặt, bị ràng buộc trong xiềng xích ngoại bang.</p>
+        <p class="intro-text" id="p2">Đó không chỉ là sự chiếm đóng lãnh thổ — mà là âm mưu xóa nhòa ký ức, bào mòn bản sắc, biến một quốc gia thành cái bóng của chính mình.</p>
+        <p class="intro-text" id="p3">Nhưng giữa màn đêm dày đặc ấy, ngọn lửa chưa bao giờ tắt.</p>
+        <p class="intro-text" id="p4">Trong từng mái nhà tranh, trong tiếng thở dài nơi ruộng đồng cằn cỗi, trong ánh mắt uất nghẹn của những người dân mất nước… ý chí phản kháng vẫn âm ỉ cháy.</p>
+        <p class="intro-text highlight" id="p5">Và chính từ trong bóng tối của thời kỳ đen tối ấy… một ngọn cờ sẽ được dựng lên. Một lời thề sẽ vang vọng núi sông…</p>
+        <button id="next-btn" class="game-btn" onclick="goToScene3()">Tiếp tục hành trình ►</button>
+    </div>
+
+    <div id="scene-3" onclick="triggerDialogue()">
+        <video id="bg-video" src="lamson.mp4" loop muted playsinline></video>
+        <div id="scene3-caption">[ Bấm chuột để lắng nghe lời hiệu triệu... ]</div>
+        <div class="dialogue-box-style">
+            <div class="avatar-frame"><img src="leloi.jfif" alt="Lê Lợi"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Bình Định Vương - Lê Lợi</div>
+                <div class="char-text" id="typewriter-text"></div>
+                <div id="narrative-update" class="narrative-alert">⚠ Bị lộ kế hoạch, giặc Minh ào ạt kéo về Lam Sơn nên nghĩa quân phải rút về Chí Linh.</div>
+                <button id="btn-to-scene4" class="game-btn" onclick="goToScene4(); event.stopPropagation();">Rút quân về Chí Linh >></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene-4">
+        <div id="s4-bg1" class="full-bg"></div><div id="s4-bg2" class="full-bg"></div><div id="s4-bg3" class="full-bg"></div>
+        <div id="stage-screen"><div id="stage-title-text" class="stage-title"></div><div id="stage-desc-text" class="stage-desc"></div><button id="start-stage-btn" class="game-btn" onclick="startCurrentStage()">BẮT ĐẦU</button></div>
+        <div id="s4-text-container"><span id="s4-typewriter"></span><button id="btn-start-stage1" class="game-btn" onclick="prepareStage1()">TIẾN VÀO RỪNG >></button></div>
+        <div id="fisherman-container" onmousedown="catchFish(true)" onmouseup="catchFish(false)">
+            <div id="fishing-hint">NHẤP CHUỘT 15 LẦN ĐỂ BẮT CÁ! (<span id="fish-count">0</span>/15)</div>
+            <img id="img-kl-normal" class="remove-black-bg" src="kl.png" alt="Bắt cá">
+            <img id="img-kl-action" class="remove-black-bg" src="kl2.png" alt="Bắt cá" style="display: none;">
+        </div>
+        <div id="archer-container" onmousedown="shootArrow(true)" onmouseup="shootArrow(false)">
+            <div id="hunting-hint">BẮN 20 MŨI TÊN LÊN TRỜI! (<span id="arrow-count">0</span>/20)</div>
+            <img id="img-ban-normal" src="ban.png" class="remove-black-bg" alt="Đứng">
+            <img id="img-ban-action" src="ban2.png" class="remove-black-bg" alt="Bắn" style="display: none;">
+            <img id="flying-arrow" src="muiten.png" class="arrow remove-black-bg" alt="Mũi tên">
+        </div>
+        <div id="reward-popup"><img id="reward-img" src="" alt="Phần thưởng"><div id="reward-text"></div><button id="reward-btn" class="game-btn"></button></div>
+    </div>
+
+    <div id="scene-5">
+        <video id="s5-video" src="taptrungnghiaquan.mp4" loop muted playsinline></video>
+        <div id="s5-caption">Nghĩa quân Lam Sơn tập trung trên núi Chí Linh</div>
+        <div id="s5-dialogue-box" class="dialogue-box-style">
+            <div class="avatar-frame"><img src="leloi.jfif" alt="Lê Lợi"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Bình Định Vương - Lê Lợi</div>
+                <div class="char-text" id="s5-typewriter-text"></div>
+                <button id="btn-to-3d" class="game-btn" onclick="goToScene6()">CHIÊM NGƯỠNG CHIẾN MÃ >></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene-6">
+        <div id="s6-bg" class="full-bg"></div><div id="horse-hotspot" onclick="openModel3D()"></div>
+        <button id="btn-to-scene7" class="game-btn" onclick="goToScene7()" style="position: absolute; bottom: 20px; right: 20px; z-index: 50;">TIẾP TỤC: NĂM 1418 >></button>
+        <div id="model-modal"><div class="model-content"><div class="close-3d-btn" onclick="closeModel3D()">×</div><div class="model-text"><h2 style="color: #ffd700;">CHIẾN MÃ LAM SƠN</h2><p>Một chiến mã khỏe khoắn của quân đội Lam Sơn thế kỷ 15, bờm dài tung bay, đeo giáp da nhẹ ở ngực và trán. Trên lưng ngựa là một vị tướng trẻ mặc áo chiến bào đỏ, đội mũ trụ đồng, tay cầm trường thương. Bối cảnh núi rừng Lam Sơn hùng vĩ, sương mù mờ ảo, ánh sáng bình minh chiếu rọi tạo vẻ oai nghiêm.</p><p style="font-size:14px;color:grey">*Dùng chuột để xoay</p></div><div class="model-viewer-container"><model-viewer id="horse-model" src="armored_horse.glb" alt="Chiến mã" auto-rotate camera-controls shadow-intensity="1" loading="eager"></model-viewer></div></div></div>
+    </div>
+
+    <div id="scene-7">
+        <div id="s7-bg" class="full-bg"></div>
+        <div id="s7-video-container"><video id="s7-video" src="quanbochay.mp4" loop muted playsinline></video></div>
+        <div id="s7-dialogue-box" class="dialogue-box-style">
+            <div class="avatar-frame"><img src="leloi.jfif"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Bình Định Vương - Lê Lợi</div>
+                <div class="char-text" id="s7-intro-text"></div>
+                <button id="start-ambush-btn" class="game-btn" onclick="startAmbush()" style="display:none;">BẮT ĐẦU PHỤC KÍCH >></button>
+            </div>
+        </div>
+        <div id="rock-left" class="ambush-item" onmousedown="dropRock('left')"><img class="remove-black-bg" src="da.png" alt="Đá rơi"></div>
+        <div id="rock-right" class="ambush-item" onmousedown="dropRock('right')"><img class="remove-black-bg" src="da.png" alt="Đá rơi"></div>
+        <div id="bow-center" class="ambush-item" onmousedown="fireArrowRain()"><img class="remove-black-bg" src="muiten.png" alt="Mưa tên" style="transform: rotate(180deg);"></div>
+        <div id="s7-narrative-box"><p id="s7-narrative-text"></p><button id="victory-btn" onclick="goToScene8()">ĐÃ THẮNG ẢI MƯỜNG MỘT<br>TIẾP TỤC: NĂM 1419</button></div>
+    </div>
+
+    <div id="scene-8">
+        <video id="s8-video" src="taptrungnghiaquan.mp4" loop muted playsinline></video>
+        <div id="s8-overlay"></div>
+        <div id="s8-title">Năm 1419: LÊ LAI CỨU CHÚA</div>
+        <div id="s8-intro-text"></div>
+        <div id="s8-leloi-box" class="dialogue-box-style">
+            <div class="avatar-frame"><img src="leloi.jfif"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Bình Định Vương - Lê Lợi</div>
+                <div class="char-text" id="s8-leloi-text"></div>
+            </div>
+        </div>
+        <div id="lelai-container" ondblclick="triggerLeLaiAction()" style="display:none;">
+            <img src="lelai.jpg" class="remove-black-bg" alt="Lê Lai">
+            <div class="click-hint">BẤM ĐÚP CHUỘT VÀO TƯỚNG QUÂN</div>
+        </div>
+        <div id="s8-lelai-box" class="dialogue-box-style" style="bottom: 30%; right: 5%; left: auto; transform: none; display:none; border-color: #00ff00;">
+            <div class="avatar-frame" style="border-color: #00ff00;"><img src="lelai.jpg"></div>
+            <div class="dialogue-content">
+                <div class="char-name" style="color: #00ff00;">Quan Nội Hầu - Lê Lai</div>
+                <div class="char-text" id="s8-lelai-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene-9">
+        <video id="s9-video" src="taptrungnghiaquan.mp4" loop muted playsinline></video>
+        <div id="s9-shout-box" class="dialogue-box-style" style="bottom: 10%; border-color: red; display: none; pointer-events: none;">
+            <div class="avatar-frame" style="border-color: red;"><img src="lelai.jpg"></div>
+            <div class="dialogue-content">
+                <div class="char-name" style="color: red; font-size: 30px;">LÊ LAI</div>
+                <div class="char-text" style="font-size: 36px; font-weight: bold; color: #ffd700;">"TA LÀ CHÚA LAM SƠN ĐÂY!"</div>
+            </div>
+        </div>
+        <div id="lelai-attack-container" ondblclick="endScene9()">
+            <img src="lelai.jpg" class="remove-black-bg" alt="Lê Lai Xung Trận">
+            <div id="click-hint-s9" class="click-hint" style="top: 100%; color: yellow; display: none;">ĐÚP CHUỘT VÀO LÊ LAI ĐỂ TIẾP TỤC</div>
+        </div>
+        <div id="s9-narrative-box">
+            <p>Quân Minh tưởng đó là Lê Lợi nên liền ào ạt tới, bắt sống, chờ giết Lê Lai và rút quân về thành Tây Đô.</p>
+            <button class="game-btn" onclick="goToScene10()">TIẾP TỤC: NAM TIẾN >></button>
+        </div>
+    </div>
+
+    <div id="scene-10">
+        <div id="s10-title">10/1424 - NGHĨA QUÂN LAM SƠN NAM TIẾN</div>
+        <div id="s10-dialogue-box" class="dialogue-box-style">
+            <div class="avatar-frame"><img src="nguyenchich.jfif" class="remove-black-bg" alt="Nguyễn Chích"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Tướng quân Nguyễn Chích</div>
+                <div class="char-text" id="s10-typewriter-text"></div>
+                <button id="btn-to-scene11" class="game-btn" onclick="goToScene11()" style="margin-top: 20px; display: none;">XEM CẢNH NAM TIẾN >></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene-11" onclick="goToScene12()">
+        <video id="s11-video" src="namtienvodi.mp4" loop muted playsinline></video>
+        <div class="cinematic-title-box">
+            <div class="cinematic-text">CẢNH QUÂN LAM SƠN NAM TIẾN</div>
+        </div>
+        <div class="click-to-continue">[ NHẤN CHUỘT ĐỂ TIẾP TỤC ]</div>
+    </div>
+
+    <div id="scene-12" onclick="goToScene13()">
+        <video id="s12-video" src="namtien2.mp4" loop muted playsinline></video>
+        <div class="cinematic-title-box">
+            <div class="cinematic-text">CẢNH TIẾN ĐÁNH CỨ ĐỊA CỦA GIẶC</div>
+        </div>
+        <div class="click-to-continue">[ NHẤN CHUỘT ĐỂ VÀO TRẬN TRÀ LÂN ]</div>
+    </div>
+
+    <div id="scene-13">
+        <video id="s13-video" src="tralan.mp4" loop muted playsinline></video>
+        <div id="s13-title-box">ĐÁNH TRÀ LÂN</div>
+        <div id="s13-dialogue-box" class="dialogue-box-style">
+            <div class="dialogue-content" style="text-align: center;">
+                <div class="char-text" id="s13-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene-14">
+        <div id="s14-bg" class="full-bg" style="background: #000;"></div>
+        <div id="s14-intro-text">
+            1425 - Trần Trí tiếp tục muốn tiến đánh Trà Lân từ Nghệ An, tính đi bằng 2 đường (thủy quân (sông Lam), và lục quân - đường này phải đi qua Đỗ Gia)
+        </div>
+        <div id="s14-leloi-box" class="dialogue-box-style">
+            <div class="avatar-frame"><img src="leloi.jfif"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Bình Định Vương - Lê Lợi</div>
+                <div class="char-text" id="s14-leloi-text"></div>
+                <button id="btn-next-s14" class="game-btn" onclick="nextPartScene14()" style="display:none; margin-top: 10px;">TIẾP THEO >></button>
+            </div>
+        </div>
+        <div id="s14-narrative-box">
+            <p>Lực lượng nghĩa quân Lam Sơn dần rút hết khỏi Trà Lân để tránh bị cô lập, kẹt cứng, Lê Lợi cho đóng quân ở Khả Lưu ⇒ Thế gọng kìm của địch bị phá vỡ</p>
+            <p>Quân giặc không đánh được đường lục quân, đành tiến đánh đường thủy quân => đến Khả Lưu.</p>
+            <button id="btn-continue-game" class="game-btn" onclick="goToScene15()" style="display:none;">TIẾP TỤC >></button>
+        </div>
+    </div>
+
+    <div id="scene-15">
+        <div id="s15-bg" class="full-bg" style="background-image: url('baiso.jpg');"></div>
+        
+        <div id="s15-leloi-box" class="dialogue-box-style">
+            <div class="avatar-frame"><img src="leloi.jfif"></div>
+            <div class="dialogue-content">
+                <div class="char-name">Bình Định Vương - Lê Lợi</div>
+                <div class="char-text" id="s15-leloi-text"></div>
+                <button id="btn-s15-next" class="game-btn" onclick="goToScene15_Part2()" style="display:none;">TIẾP TỤC >></button>
+            </div>
+        </div>
+
+        <div id="s15-narrative-box" style="position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); width: 80%; background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid #ffd700; border-radius: 10px; color: #fff; text-align: center; font-size: 20px; display: none; z-index: 20;">
+            <p id="s15-narrative-text"></p>
+            <button id="btn-s15-back" class="game-btn" onclick="goToScene15_Part3()">QUAY LẠI BÃI SỞ >></button>
+        </div>
+
+        <div id="camp-trigger" onclick="startFireGame()">
+            <img src="leutrai.png" class="remove-black-bg" alt="Trại địch">
+            <div style="color: yellow; font-weight: bold; text-align: center; background: rgba(0,0,0,0.7);">ĐỐT TRẠI</div>
+        </div>
+
+        <div id="camp-game-container">
+            <div id="burn-instruction">GIỮ CHUỘT VÀ DI CHUYỂN NGỌN LỬA ĐỂ ĐỐT TRẠI (20s)</div>
+            
+            <div class="enemy-camp" style="top: 30%; left: 20%;"><img src="leutrai.png" class="remove-black-bg"></div>
+            <div class="enemy-camp" style="top: 40%; left: 50%;"><img src="leutrai.png" class="remove-black-bg"></div>
+            <div class="enemy-camp" style="top: 60%; left: 30%;"><img src="leutrai.png" class="remove-black-bg"></div>
+            <div class="enemy-camp" style="top: 50%; left: 70%;"><img src="leutrai.png" class="remove-black-bg"></div>
+            
+            <div id="fire-cursor"><img src="lua.png" class="remove-black-bg"></div>
+        </div>
+
+        <div id="s15-final-box">
+            <div id="s15-final-title">CHIẾN THẮNG BỒ ẢI!</div>
+            <div id="s15-final-text">
+                Quân Minh tưởng rằng quân ít, lương thực thiếu nên cho quân tháo chạy.<br>
+                Quân Minh đuổi theo đến Bồ Ải thì bị phục kích => Trần Trí tháo chạy về Nghệ An.<br><br>
+                <span style="color: #00ff00; font-weight: bold;">"Sau trận thắng lớn, Lê Lợi tiếp tục cho giải phóng nhiều vùng ở Nghệ An"</span>
+            </div>
+            <button class="game-btn" onclick="alert('CHÚC MỪNG! BẠN ĐÃ HOÀN THÀNH DEMO LỊCH SỬ HÀO HÙNG!')">HOÀN THÀNH</button>
+        </div>
+        <div id="scene-16">
+        <div id="s16-bg"></div>
+        <div id="s16-intro-title">Tháng 5/1425 - Tấn công Nghệ An</div>
+        <div id="s16-intro-desc">Trong khi vây hãm thành Nghệ An...</div>
+        
+        <div id="letter-icon" onclick="openLetterDialogue()">
+            <img src="thu.png" alt="Thư Khiêu Chiến"><div class="click-hint" style="top:110%; color:yellow;">BẤM VÀO THƯ</div>
+        </div>
+
+        <div id="s16-dialogue-box" class="dialogue-box-style">
+            <div class="avatar-frame" style="border-color: #00ffff;"><img src="nguyentrai.jpg" alt="Nguyễn Trãi"></div>
+            <div class="dialogue-content">
+                <div class="char-name" style="color: #00ffff; border-color: #00ffff;">Nguyễn Trãi (Gửi thư khiêu chiến)</div>
+                <div class="char-text" id="s16-typewriter-text"></div>
+            </div>
+        </div>
+
+        <div id="s16-conclusion">
+            ⇒ Phương Chính tức giận đùng đùng nhưng vẫn án binh bất động vì sự bao vây dày đặc của ta.
+            <br>
+            <button class="game-btn" onclick="alert('HOÀN THÀNH TOÀN BỘ CỐT TRUYỆN!')">KẾT THÚC</button>
+        </div>
+    </div>
+    <script>
+        function playSound(id, vol=1.0) { const audio = document.getElementById(id); if(audio) { audio.volume = vol; audio.currentTime = 0; audio.play().catch(e => {}); } }
+        function pauseSound(id) { const audio = document.getElementById(id); if(audio) audio.pause(); }
+        function typeWriterEffect(text, elementId, speed, callback) { let i = 0; const el = document.getElementById(elementId); el.innerHTML = ""; function type() { if (i < text.length) { el.innerHTML += text.charAt(i); i++; setTimeout(type, speed); } else { el.innerHTML += '<span class="cursor">_</span>'; if (callback) callback(); } } type(); }
+
+        // SCENE 1-9 (GIỮ NGUYÊN)
+        function runGame() { playSound('click-sound'); document.getElementById('main-menu').style.opacity = '0'; setTimeout(() => { document.getElementById('main-menu').style.display = 'none'; document.getElementById('intro-scene').style.display = 'flex'; playSound('intro-voice'); startAnimation(); }, 1000); }
+        function startAnimation() { setTimeout(() => showText('p1'), 500); setTimeout(() => showText('p2'), 14000); setTimeout(() => showText('p3'), 22000); setTimeout(() => showText('p4'), 26000); setTimeout(() => { showText('p5'); setTimeout(() => document.getElementById('next-btn').classList.add('show'), 3000); }, 35000); }
+        function showText(id) { document.getElementById(id).classList.add('visible'); }
+        function skipIntro() { pauseSound('intro-voice'); goToScene3(); }
+        function goToScene3() { pauseSound('intro-voice'); playSound('click-sound'); document.getElementById('intro-scene').style.display = 'none'; document.getElementById('scene-3').style.display = 'block'; document.getElementById('bg-video').play(); playSound('quanta-sound'); }
+        let isDialogueShown = false;
+        function triggerDialogue() { if (!isDialogueShown) { document.getElementById('bg-video').classList.add('blurred'); document.getElementById('scene3-caption').style.opacity = '0'; const box = document.querySelector('#scene-3 .dialogue-box-style'); box.style.display = 'flex'; setTimeout(() => box.classList.add('active'), 50); playSound('click-sound'); playSound('quanta-sound', 0.2); playSound('scene3-bgm', 0.6); playSound('leloi-voice'); typeWriterEffect("Ta cất quân đánh giặc, không phải là có lòng ham muốn phú quý, mà chính vì muốn để ngàn năm về sau, người đời biết ta không chịu làm tôi tớ cho bọn giặc tàn ngược.", 'typewriter-text', 60, () => { document.getElementById('narrative-update').style.display = 'block'; document.getElementById('btn-to-scene4').style.display = 'block'; }); isDialogueShown = true; } }
+        function goToScene4() { pauseSound('quanta-sound'); pauseSound('leloi-voice'); playSound('click-sound'); document.getElementById('scene-3').style.display = 'none'; document.getElementById('scene-4').style.display = 'block'; playSound('scene3-bgm', 0.8); typeWriterEffect("Những ngày sống trên núi Chí Linh: Lê Lợi phải giết con ngựa chiến của mình, nghĩa quân săn bắt, hái lá rừng, đào củ rừng ăn qua ngày.", 's4-typewriter', 50, () => { document.getElementById('btn-start-stage1').style.display = 'block'; }); }
+        let currentStage = 0;
+        function startCurrentStage() { playSound('click-sound'); document.getElementById('stage-screen').style.display = 'none'; if (currentStage === 1) document.getElementById('fisherman-container').style.display = 'block'; else if (currentStage === 2) document.getElementById('archer-container').style.display = 'block'; }
+        function prepareStage1() { document.getElementById('s4-text-container').style.display = 'none'; pauseSound('scene3-bgm'); document.getElementById('s4-bg2').style.opacity = '1'; playSound('s4-audio2'); document.getElementById('stage-screen').style.display = 'flex'; currentStage = 1; document.querySelector('#stage-screen .stage-title').innerText = "CHẶNG 1: BẮT CÁ"; }
+        let fishClicks = 0;
+        function catchFish(isDown) { const imgN = document.getElementById('img-kl-normal'); const imgA = document.getElementById('img-kl-action'); if (isDown) { imgN.style.display = 'none'; imgA.style.display = 'block'; playSound('batca-sound'); fishClicks++; document.getElementById('fish-count').innerText = fishClicks; if (fishClicks >= 15) finishStage1(); } else { imgN.style.display = 'block'; imgA.style.display = 'none'; } }
+        function finishStage1() { document.getElementById('fisherman-container').style.display = 'none'; playSound('reward-sound'); document.getElementById('reward-popup').style.display = 'flex'; document.getElementById('reward-img').src = "conca.png"; document.getElementById('reward-text').innerText = "BẠN ĐÃ CÓ CÁ!"; document.getElementById('reward-btn').innerText = "TIẾP TỤC"; document.getElementById('reward-btn').onclick = prepareStage2; }
+        function prepareStage2() { document.getElementById('reward-popup').style.display = 'none'; document.getElementById('s4-bg2').style.opacity = '0'; document.getElementById('s4-bg3').style.opacity = '1'; document.getElementById('stage-screen').style.display = 'flex'; currentStage = 2; document.querySelector('#stage-screen .stage-title').innerText = "CHẶNG 2: SĂN CHIM"; }
+        let arrowCount = 0;
+        function shootArrow(isDown) { const imgN = document.getElementById('img-ban-normal'); const imgA = document.getElementById('img-ban-action'); const arrow = document.getElementById('flying-arrow'); if (isDown) { imgN.style.display = 'none'; imgA.style.display = 'block'; playSound('tiengten-sound'); arrow.style.display = 'block'; arrow.style.animation = 'none'; arrow.offsetHeight; arrow.style.animation = 'flyArrow 0.3s linear'; arrowCount++; document.getElementById('arrow-count').innerText = arrowCount; if (arrowCount >= 20) finishStage2(); } else { setTimeout(() => { imgN.style.display = 'block'; imgA.style.display = 'none'; }, 200); } }
+        function finishStage2() { document.getElementById('archer-container').style.display = 'none'; playSound('reward-sound'); document.getElementById('reward-popup').style.display = 'flex'; document.getElementById('reward-img').src = "chim.png"; document.getElementById('reward-text').innerText = "BẠN ĐÃ CÓ CHIM!"; document.getElementById('reward-btn').innerText = "TẬP HỢP QUÂN"; document.getElementById('reward-btn').onclick = goToScene5; }
+        function goToScene5() { document.getElementById('scene-4').style.display = 'none'; document.getElementById('scene-5').style.display = 'block'; document.getElementById('s5-video').play(); playSound('tiengtrong-sound', 1.0); setTimeout(triggerLeLoiCommand, 4000); }
+        function triggerLeLoiCommand() { document.getElementById('s5-video').classList.add('blurred'); document.getElementById('s5-caption').style.opacity = '0'; const box = document.getElementById('s5-dialogue-box'); box.style.display = 'flex'; setTimeout(() => box.classList.add('active'), 50); playSound('leloicatluong-voice'); typeWriterEffect("Các ngươi cho nghĩa quân chúng ta âm thầm sản xuất và cất giấu lương thực ở những nơi bí mật trên núi Chí Linh này để biết đâu sau này cần dùng đến.", 's5-typewriter-text', 50, () => { document.getElementById('btn-to-3d').style.display = 'block'; }); }
+        function goToScene6() { pauseSound('leloicatluong-voice'); playSound('click-sound'); document.getElementById('scene-5').style.display = 'none'; document.getElementById('scene-6').style.display = 'block'; }
+        function openModel3D() { playSound('click-sound'); document.getElementById('horse-hotspot').style.display = 'none'; document.getElementById('model-modal').style.display = 'flex'; }
+        function closeModel3D() { playSound('click-sound'); document.getElementById('model-modal').style.display = 'none'; document.getElementById('horse-hotspot').style.display = 'block'; }
+        function goToScene7() { playSound('click-sound'); document.getElementById('scene-6').style.display = 'none'; document.getElementById('scene-7').style.display = 'block'; playSound('trongvang-sound', 1.0); const box = document.getElementById('s7-dialogue-box'); box.style.display = 'flex'; setTimeout(() => box.classList.add('active'), 50); typeWriterEffect("(Đánh phục kích): Lý Bân cho quân đến Lam Sơn. Ta lợi dụng địa hình 2 vách núi, cho quân giả thua để lùa giặc vào trận địa mai phục!", 's7-intro-text', 40, () => { document.getElementById('start-ambush-btn').style.display = 'block'; }); }
+        function startAmbush() { playSound('click-sound'); document.getElementById('s7-dialogue-box').style.display = 'none'; document.getElementById('rock-left').style.display = 'block'; document.getElementById('rock-right').style.display = 'block'; alert("NHIỆM VỤ: Nhấn vào các tảng đá đang phát sáng để lăn xuống (15 lần)!"); }
+        let rockCount = 0; const TARGET_ROCKS = 15;
+        function dropRock(side) { playSound('daroi-sound'); const rock = document.createElement('img'); rock.src = 'da.png'; rock.className = 'falling-rock remove-black-bg'; rock.style.left = side === 'left' ? '15%' : 'auto'; rock.style.right = side === 'right' ? '15%' : 'auto'; rock.style.top = '25%'; document.getElementById('scene-7').appendChild(rock); rock.style.animation = 'dropRock 1s linear forwards'; setTimeout(() => rock.remove(), 1000); rockCount++; if (rockCount >= TARGET_ROCKS) { setTimeout(startArrowPhase, 1000); } }
+        function startArrowPhase() { document.getElementById('rock-left').style.display = 'none'; document.getElementById('rock-right').style.display = 'none'; document.getElementById('bow-center').style.display = 'block'; alert("Bắn tên!"); }
+        let arrowAmbushCount = 0; const TARGET_ARROWS = 15;
+        function fireArrowRain() { playSound('tiengten-sound'); for(let i=0; i<3; i++) { const arrow = document.createElement('img'); arrow.src = 'muiten.png'; arrow.className = 'falling-arrow-down remove-black-bg'; arrow.style.left = (30 + Math.random() * 40) + '%'; arrow.style.top = '15%'; arrow.style.animation = `rainArrow ${(0.5 + Math.random() * 0.5)}s linear forwards`; document.getElementById('scene-7').appendChild(arrow); setTimeout(() => arrow.remove(), 1000); } arrowAmbushCount++; if (arrowAmbushCount >= TARGET_ARROWS) { setTimeout(endAmbushBattle, 1500); } }
+        function endAmbushBattle() { document.getElementById('bow-center').style.display = 'none'; document.getElementById('s7-video-container').style.display = 'block'; document.getElementById('s7-video').play(); playSound('chaos-sound'); document.getElementById('s7-narrative-box').style.display = 'block'; document.getElementById('s7-narrative-text').innerText = "Thắng lợi!"; setTimeout(() => { document.getElementById('victory-btn').style.display = 'block'; }, 3000); }
+        function goToScene8() { playSound('click-sound'); pauseSound('trongvang-sound'); pauseSound('chaos-sound'); document.getElementById('scene-7').style.display = 'none'; document.getElementById('scene-8').style.display = 'block'; playSound('leloihoi-bgm', 0.7); document.getElementById('s8-video').play(); typeWriterEffect("Tiếp tục bị Lý Bân cho tấn công vào Lam Sơn...", 's8-intro-text', 40, () => { setTimeout(showLeLoiScene8, 1500); }); }
+        function showLeLoiScene8() { document.getElementById('s8-intro-text').style.display = 'none'; const box = document.getElementById('s8-leloi-box'); box.style.display = 'flex'; setTimeout(() => box.classList.add('active'), 50); playSound('leloikytin-voice'); typeWriterEffect("Ai dám bắt chước Kỷ Tín...", 's8-leloi-text', 50, () => { setTimeout(() => { document.getElementById('lelai-container').style.display = 'block'; }, 1000); }); }
+        function triggerLeLaiAction() { document.getElementById('s8-leloi-box').style.display = 'none'; document.getElementById('lelai-container').style.display = 'none'; pauseSound('leloihoi-bgm'); playSound('lelaixin-sound', 0.8); const box = document.getElementById('s8-lelai-box'); box.style.display = 'flex'; setTimeout(() => box.classList.add('active'), 50); playSound('lelaidoiao-voice'); typeWriterEffect("Thần xin được đổi áo", 's8-lelai-text', 60, () => { const nextBtn = document.createElement('button'); nextBtn.className = 'game-btn'; nextBtn.innerText = "LÊ LAI XUẤT TRẬN >>"; nextBtn.onclick = goToScene9; nextBtn.style.marginTop = "20px"; document.querySelector('#s8-lelai-box .dialogue-content').appendChild(nextBtn); }); }
+        function goToScene9() {
+            playSound('click-sound');
+            pauseSound('lelaixin-sound'); pauseSound('lelaidoiao-voice');
+            document.getElementById('scene-8').style.display = 'none';
+            document.getElementById('scene-9').style.display = 'block';
+            playSound('trongvang-sound');
+            document.getElementById('s9-video').play();
+            const lelai = document.getElementById('lelai-attack-container');
+            lelai.classList.add('charge');
+            setTimeout(() => {
+                playSound('lelaitalachua-voice');
+                playSound('lelaithoai-sound', 0.5); 
+                const shoutBox = document.getElementById('s9-shout-box');
+                shoutBox.style.display = 'flex';
+                setTimeout(() => shoutBox.classList.add('active'), 50);
+                setTimeout(() => {
+                    document.getElementById('s9-shout-box').style.display = 'none';
+                    document.getElementById('click-hint-s9').style.display = 'block';
+                }, 3000); 
+            }, 2000);
+        }
+        function endScene9() {
+            document.getElementById('lelai-attack-container').style.display = 'none';
+            document.getElementById('s9-shout-box').style.display = 'none';
+            const box = document.getElementById('s9-narrative-box');
+            box.style.display = 'block';
+            playSound('reward-sound');
+        }
+
+        // === CẢNH 10: NAM TIẾN ===
+        function goToScene10() {
+            playSound('click-sound');
+            pauseSound('lelaithoai-sound'); pauseSound('trongvang-sound');
+            document.getElementById('scene-9').style.display = 'none';
+            document.getElementById('scene-10').style.display = 'block';
+            playSound('namtien-sound', 0.8);
+            const title = document.getElementById('s10-title');
+            setTimeout(() => title.style.opacity = '1', 500);
+            setTimeout(() => {
+                title.style.opacity = '0'; 
+                const box = document.getElementById('s10-dialogue-box');
+                box.style.display = 'flex';
+                setTimeout(() => box.classList.add('active'), 50);
+                playSound('giongdocnamtien-voice');
+                const fullText = `Sau khi họp hội nghị quân sự cấp cao, quân ta thực hiện chính sách: phải chiếm được vùng lãnh thổ rộng lớn như Nghệ An mới có thể huy động đủ sức người và sức của để kháng chiến lâu dài.<br><br><div class="poetry-text">“Trận Bồ Đằng sấm vang chớp giật<br>Miền Trà Lân trúc chẻ tro bay”</div>`;
+                const container = document.getElementById('s10-typewriter-text');
+                container.innerHTML = fullText; container.style.opacity = 0;
+                let op = 0; const fadeIn = setInterval(() => { if (op >= 1) clearInterval(fadeIn); container.style.opacity = op; op += 0.05; }, 50);
+                document.getElementById('btn-to-scene11').style.display = 'block';
+            }, 2500);
+        }
+
+        // === CẢNH 11: QUÂN LAM SƠN NAM TIẾN ===
+        function goToScene11() {
+            playSound('click-sound');
+            document.getElementById('scene-10').style.display = 'none';
+            document.getElementById('scene-11').style.display = 'block';
+            document.getElementById('s11-video').play();
+        }
+
+        // === CẢNH 12: TIẾN ĐÁNH CỨ ĐỊA ===
+        function goToScene12() {
+            playSound('click-sound');
+            document.getElementById('scene-11').style.display = 'none';
+            document.getElementById('scene-12').style.display = 'block';
+            document.getElementById('s12-video').play();
+            playSound('namtien-sound'); 
+        }
+
+        // === CẢNH 13: ĐÁNH TRÀ LÂN ===
+        function goToScene13() {
+            playSound('click-sound');
+            pauseSound('namtien-sound');
+            document.getElementById('scene-12').style.display = 'none';
+            document.getElementById('scene-13').style.display = 'block';
+            document.getElementById('s13-video').play();
+            playSound('chaos-sound');
+            const box = document.getElementById('s13-dialogue-box');
+            box.style.display = 'flex';
+            setTimeout(() => box.classList.add('active'), 500);
+            typeWriterEffect("Biết tin, triều đình nhà Minh chặn đánh ở 2 phía Nam và Bắc. Lê Lợi đánh phương Bắc trước, cho quân núp sau khe núi Bồ Đằng, đợi ban đêm giặc tấn công rồi đánh.", 's13-text', 40, () => {
+                const victoryText = document.createElement('div');
+                victoryText.className = 'highlight-victory';
+                victoryText.innerHTML = "=> LÊ LỢI DẦN CHIẾM ĐƯỢC THÀNH TRÀ LÂN";
+                document.getElementById('s13-text').appendChild(victoryText);
+                playSound('reward-sound');
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'game-btn';
+                nextBtn.innerText = "TIẾP TỤC: KẾ SÁCH 1425 >>";
+                nextBtn.onclick = goToScene14;
+                nextBtn.style.marginTop = "20px";
+                document.querySelector('#s13-dialogue-box .dialogue-content').appendChild(nextBtn);
+            });
+        }
+
+        // === CẢNH 14: KẾ SÁCH 1425 (MỚI) ===
+        function goToScene14() {
+            playSound('click-sound');
+            pauseSound('chaos-sound');
+            document.getElementById('scene-13').style.display = 'none';
+            document.getElementById('scene-14').style.display = 'block';
+            playSound('scene3-bgm'); // Nhạc nền cũ
+
+            // Hiện chữ intro
+            const intro = document.getElementById('s14-intro-text');
+            intro.style.display = 'block';
+
+            setTimeout(() => {
+                intro.style.display = 'none';
+                const leloiBox = document.getElementById('s14-leloi-box');
+                leloiBox.style.display = 'flex';
+                setTimeout(() => leloiBox.classList.add('active'), 50);
+                playSound('leloigiacdongta-voice');
+                
+                typeWriterEffect("Giặc đông, ta ít. Lấy ít mà đánh đông chỉ có nơi hiểm yếu mới mong thủ thắng. Binh Pháp nói rằng phải nhử người đến chứ đừng để người nhử mình. => Lê Lợi cho đánh chiếm Đỗ Gia.", 's14-leloi-text', 40, () => {
+                    document.getElementById('btn-next-s14').style.display = 'block';
+                });
+            }, 4000);
+        }
+
+        function nextPartScene14() {
+            playSound('click-sound');
+            document.getElementById('s14-leloi-box').style.display = 'none';
+            document.getElementById('s14-narrative-box').style.display = 'block';
+            
+            // Đợi 5s hiện nút tiếp tục
+            setTimeout(() => {
+                document.getElementById('btn-continue-game').style.display = 'block';
+                playSound('click-sound');
+            }, 5000);
+        }
+
+        // === CẢNH 15: TRẬN KHẢ LƯU - ĐỐT TRẠI (MỚI) ===
+        function goToScene15() {
+            playSound('click-sound');
+            pauseSound('scene3-bgm');
+            document.getElementById('scene-14').style.display = 'none';
+            document.getElementById('scene-15').style.display = 'block';
+            
+            // Giai đoạn 1: Bãi Sở
+            playSound('tiengtrong-sound'); // Nền
+            const box = document.getElementById('s15-leloi-box');
+            box.style.display = 'flex';
+            setTimeout(() => box.classList.add('active'), 50);
+            
+            playSound('leloisommuon-voice');
+            typeWriterEffect("Sớm muộn thế nào giặc cũng đánh vào Khả Lưu. Ta không mai phục được ở sâu trong cửa ải thì mai phục ở phía ngoài ải vậy.", 's15-leloi-text', 40, () => {
+                document.getElementById('btn-s15-next').style.display = 'block';
+            });
+        }
+
+        function goToScene15_Part2() {
+            playSound('click-sound');
+            document.getElementById('s15-leloi-box').style.display = 'none';
+            
+            // Chuyển nền sang đánh nhau
+            document.getElementById('s15-bg').style.backgroundImage = "url('danhnhau.jpg')";
+            
+            // Hiện chữ dẫn truyện
+            const narr = document.getElementById('s15-narrative-box');
+            narr.style.display = 'block';
+            document.getElementById('s15-narrative-text').innerHTML = "Nghĩa quân Lam Sơn giả vờ thua để lùa quân Minh vào trận địa mai phục => giặc thua to. <br>Giặc Minh cố thủ lâu dài ở gần Khả Lưu để chặn bước tiến của Lê Lợi về Nghệ An.";
+        }
+
+        function goToScene15_Part3() {
+            playSound('click-sound');
+            document.getElementById('s15-narrative-box').style.display = 'none';
+            
+            // Quay lại Bãi Sở
+            document.getElementById('s15-bg').style.backgroundImage = "url('baiso.jpg')";
+            
+            // Hiện lại Lê Lợi nói đốt trại
+            const box = document.getElementById('s15-leloi-box');
+            document.getElementById('s15-leloi-text').innerHTML = ""; // Xóa chữ cũ
+            box.style.display = 'flex';
+            
+            typeWriterEffect("Lương thực không còn nhiều. Ta quyết định 'Đốt trại dụ địch', cho quân lui về Bồ Ải mai phục.", 's15-leloi-text', 40, () => {
+                // Sau khi nói xong -> Hiện trại để bấm
+                setTimeout(() => {
+                    document.getElementById('s15-leloi-box').style.display = 'none';
+                    document.getElementById('camp-trigger').style.display = 'block';
+                    alert("NHIỆM VỤ: Nhấn vào trại địch để bắt đầu đốt!");
+                }, 2000);
+            });
+        }
+
+        // --- MINI GAME ĐỐT TRẠI ---
+        let burningTime = 0;
+        let isBurning = false;
+        let burnInterval;
+
+        function startFireGame() {
+            playSound('click-sound');
+            document.getElementById('camp-trigger').style.display = 'none';
+            document.getElementById('camp-game-container').style.display = 'block';
+            document.body.style.cursor = 'none'; // Ẩn chuột thật
+            document.getElementById('fire-cursor').style.display = 'block'; // Hiện lửa giả
+            
+            // Bắt đầu đốt
+            playSound('dottrai-sound');
+            
+            document.addEventListener('mousemove', moveFire);
+            document.addEventListener('mousedown', startBurn);
+            document.addEventListener('mouseup', stopBurn);
+        }
+
+        function moveFire(e) {
+            const fire = document.getElementById('fire-cursor');
+            fire.style.left = e.pageX + 'px';
+            fire.style.top = e.pageY + 'px';
+        }
+
+        function startBurn() {
+            isBurning = true;
+            burnInterval = setInterval(() => {
+                burningTime++;
+                if (burningTime >= 20) { // 20 đơn vị thời gian (tương đối)
+                    winFireGame();
+                }
+            }, 1000); // 1 giây tăng 1 lần
+        }
+
+        function stopBurn() {
+            isBurning = false;
+            clearInterval(burnInterval);
+        }
+
+        function winFireGame() {
+            clearInterval(burnInterval);
+            document.removeEventListener('mousemove', moveFire);
+            document.removeEventListener('mousedown', startBurn);
+            document.removeEventListener('mouseup', stopBurn);
+            document.body.style.cursor = 'default';
+            
+            document.getElementById('camp-game-container').style.display = 'none';
+            pauseSound('dottrai-sound');
+            pauseSound('tiengtrong-sound');
+            
+            // Chiến thắng
+            playSound('chucmung-sound');
+            playSound('reward-sound');
+            document.getElementById('s15-final-box').style.display = 'block';
+        }
+
+    
+        // CẢNH 16: TẤN CÔNG NGHỆ AN (MỚI)
+        function goToScene16() {
+            playSound('click-sound');
+            pauseSound('chucmung-sound');
+            document.getElementById('scene-15').style.display = 'none';
+            document.getElementById('scene-16').style.display = 'block';
+            playSound('chaos-sound'); 
+            setTimeout(() => {
+                document.getElementById('s16-intro-desc').style.opacity = '1';
+                setTimeout(() => {
+                    document.getElementById('s16-bg').classList.add('blurred');
+                    document.getElementById('letter-icon').style.display = 'block';
+                }, 2000);
+            }, 1000);
+        }
+
+        function openLetterDialogue() {
+            playSound('click-sound');
+            document.getElementById('letter-icon').style.display = 'none';
+            const box = document.getElementById('s16-dialogue-box');
+            box.style.display = 'flex';
+            setTimeout(() => box.classList.add('active'), 50);
+            playSound('nguyentraithu-voice');
+            const txt = "Ngươi từng gửi thư cho ta, cười ta nương náu nơi rừng núi, thập thò như chuột, không dám ra đồng bằng để đánh nhau. Nay quân ta đã đến đây, ngoài thành Nghệ An đều là chiến trường cả. Ngươi nói đây là rừng núi chăng? Ngươi cứ đóng thành như mụ già mãi hay sao? Ta sợ rằng ngươi không tránh khỏi tiếng nhục, hiền như đàn bà khăn yếm vậy.";
+            
+            // Chữ chạy trong 10s -> tốc độ 30ms
+            typeWriterEffect(txt, 's16-typewriter-text', 30, () => {
+                setTimeout(() => {
+                    document.getElementById('s16-dialogue-box').style.display = 'none';
+                    document.getElementById('s16-conclusion').style.display = 'block';
+                    playSound('reward-sound');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
