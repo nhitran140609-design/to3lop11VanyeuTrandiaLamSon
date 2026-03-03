@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Trận Tốt Động - Chúc Động</title>
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: black;
+        font-family: 'Courier New', Courier, serif;
+        user-select: none;
+    }
+
+    /* MÀN HÌNH GAME */
+    #game-scene {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        background: url('totdongchucdong.jpg') center/cover no-repeat;
+        background-color: #222;
+    }
+
+    /* UI: TIM & TIÊU ĐỀ */
+    #top-ui {
+        position: absolute;
+        top: 0;
+        width: 100%;
+        height: 80px;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 40px;
+        box-sizing: border-box;
+        z-index: 100;
+        color: white;
+        font-weight: bold;
+        font-size: 24px;
+    }
+    .heart-box { display: flex; align-items: center; gap: 10px; }
+    #title-text {
+        color: gold;
+        font-size: 32px;
+        text-shadow: 0 0 10px orange;
+        text-align: center;
+    }
+
+    /* HƯỚNG DẪN & INTRO */
+    #overlay {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.95);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        color: gold;
+        text-align: center;
+    }
+    #overlay h1 { font-size: 50px; margin-bottom: 20px; text-transform: uppercase; }
+    #overlay p { font-size: 22px; color: white; line-height: 1.6; max-width: 800px; }
+    
+    .game-btn {
+        margin-top: 40px;
+        padding: 15px 40px;
+        font-size: 24px;
+        color: white;
+        border: 2px solid gold;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.3s;
+        text-transform: uppercase;
+        background: darkred;
+    }
+    .game-btn:hover { background: red; box-shadow: 0 0 20px gold; transform: scale(1.05); }
+
+
+    /* QUÂN TA */
+    .soldier {
+        position: absolute;
+        width: 150px; /* Chỉnh nhỏ lại chút cho dễ nhìn */
+        cursor: pointer;
+        transition: all 0.5s ease-out;
+        filter: drop-shadow(0 0 10px gold);
+        border: 2px solid gold;
+        border-radius: 10px;
+        z-index: 50;
+        background: rgba(0,0,0,0.3);
+    }
+    .soldier:hover { transform: scale(1.1); border-color: white; }
+
+    /* QUÂN ĐỊCH */
+    .enemy {
+        position: absolute;
+        width: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        top: -250px;
+        transition: top 6s linear;
+        z-index: 40;
+        filter: drop-shadow(0 0 10px red);
+    }
+
+    /* DẤU X (VỊ TRÍ) */
+    .marker {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        background: url('daux.png') center/contain no-repeat;
+        border: 2px dashed rgba(255, 215, 0, 0.5);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: pulse 1.5s infinite;
+        cursor: pointer;
+    }
+    @keyframes pulse {
+        0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+        100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    /* THANH NỘ KHÍ */
+    #charge-container {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        height: 40px;
+        border: 3px solid white;
+        border-radius: 20px;
+        background: rgba(0,0,0,0.7);
+        display: none;
+        overflow: hidden;
+        z-index: 900;
+    }
+    #charge-bar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, orange, red);
+        transition: width 0.1s linear;
+    }
+    #charge-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        line-height: 40px;
+        color: white;
+        font-weight: bold;
+        font-size: 20px;
+        text-shadow: 1px 1px 2px black;
+    }
+
+    /* MŨI TÊN & HIỆU ỨNG */
+    .arrow {
+        position: absolute;
+        width: 80px;
+        height: 10px;
+        background: gold;
+        z-index: 60;
+        pointer-events: none;
+    }
+    #flash {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: white;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 1000;
+        transition: opacity 0.1s;
+    }
+
+    /* MÀN HÌNH THẮNG/THUA */
+    #end-screen {
+        display: none;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.95);
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: gold;
+        z-index: 3000;
+        text-align: center;
+        top: 0; left: 0;
+    }
+    #end-msg {
+        font-size: 50px;
+        margin-bottom: 30px;
+        text-shadow: 0 0 20px currentColor;
+    }
+</style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1>TRẬN TỐT ĐỘNG - CHÚC ĐỘNG</h1>
+        <p>
+            1. <b>BƯỚC 1 (DÀN TRẬN):</b> Click chuột vào các LÍNH ở dưới để di chuyển họ vào vị trí dấu X.<br>
+            2. <b>BƯỚC 2 (TỬ CHIẾN):</b> Khi xếp đủ đội hình, quân Minh sẽ tấn công.<br>
+            3. <b>CÁCH BẮN:</b> Bấm phím <b>[ENTER]</b> liên tục (20 lần) để tích đầy thanh Nộ Khí và bắn hạ địch.<br>
+            <br>
+            <i>"Phải sạch bóng quân thù mới được coi là thắng trận!"</i>
+        </p>
+        <button id="start-btn" class="game-btn">VÀO TRẬN ĐỊA</button>
+    </div>
+
+    <div id="top-ui">
+        <div class="heart-box" id="player-hp-box">
+            Ta: <span style="color:lime">❤️❤️❤️❤️❤️</span>
+        </div>
+        <div id="title-text">TỐT ĐỘNG - CHÚC ĐỘNG</div>
+        <div class="heart-box" id="enemy-hp-box">
+            Địch còn: <span id="enemy-count" style="color:red; font-size:30px">10</span> tên
+        </div>
+    </div>
+
+    <div id="game-scene">
+        <div id="flash"></div>
+        <div id="charge-container">
+            <div id="charge-bar"></div>
+            <div id="charge-text">NHÁY ENTER LIÊN TỤC ĐỂ BẮN! (0/20)</div>
+        </div>
+    </div>
+
+    <div id="end-screen">
+        <h1 id="end-msg">CHIẾN THẮNG</h1>
+        <button id="end-btn" class="game-btn">QUA CẢNH 18: CHI LĂNG - XƯƠNG GIANG >></button>
+    </div>
+
+<script>
+    // --- CẤU HÌNH ---
+    const TOTAL_SOLDIERS = 6;
+    const CLICKS_TO_SHOOT = 20; 
+    const TOTAL_ENEMIES = 10; 
+    const NEXT_PAGE_URL = "canh18.html"; // Đã sửa link chuyển cảnh
+
+    // --- BIẾN HỆ THỐNG ---
+    let gameState = "INTRO"; 
+    let soldiersPlaced = 0;
+    let clickCount = 0;
+    let enemiesKilled = 0;
+    let enemies = [];
+    let playerHP = 5;
+    let enemySpawnInterval;
+    
+    // --- DOM ELEMENTS ---
+    const scene = document.getElementById("game-scene");
+    const overlay = document.getElementById("overlay");
+    const chargeContainer = document.getElementById("charge-container");
+    const chargeBar = document.getElementById("charge-bar");
+    const chargeText = document.getElementById("charge-text");
+    const enemyCountDisplay = document.getElementById("enemy-count");
+    const playerHpDisplay = document.querySelector("#player-hp-box span");
+    
+    const endScreen = document.getElementById("end-screen");
+    const endMsg = document.getElementById("end-msg");
+    const endBtn = document.getElementById("end-btn"); // Đã có ID trong HTML
+    const flashDiv = document.getElementById("flash");
+
+    // --- ÂM THANH ---
+    const shootSound = new Audio("tiengten.mp3");
+    
+    // Nhạc nền
+    const bgMusic = new Audio("orchestra_tension.mp3");
+    bgMusic.loop = true; 
+    bgMusic.volume = 0.6; 
+
+    // Nhạc thắng
+    const winMusic = new Audio("chucmung.mp3");
+    winMusic.loop = false;
+
+    // --- SỰ KIỆN KHỞI TẠO ---
+    document.getElementById("start-btn").addEventListener("click", () => {
+        overlay.style.display = "none";
+        gameState = "SETUP";
+        initGame();
+    });
+
+    function initGame() {
+        spawnMarkers();
+        spawnSoldiers();
+    }
+
+    // --- PHẦN 1: DÀN TRẬN ---
+    let markerPositions = [];
+
+    function spawnMarkers() {
+        let startX = window.innerWidth / 2;
+        let startY = window.innerHeight / 2 - 100;
+
+        for (let i = 0; i < TOTAL_SOLDIERS; i++) {
+            let m = document.createElement("div");
+            m.className = "marker";
+            let offsetX = (i % 2 === 0) ? -250 : 250;
+            let offsetY = Math.floor(i / 2) * 120;
+            
+            m.style.left = (startX + offsetX) + "px";
+            m.style.top = (startY + offsetY) + "px";
+            m.dataset.occupied = "false";
+            m.id = "marker-" + i;
+            
+            scene.appendChild(m);
+            markerPositions.push(m);
+        }
+    }
+
+    function spawnSoldiers() {
+        let spacing = window.innerWidth / (TOTAL_SOLDIERS + 1);
+        for (let i = 0; i < TOTAL_SOLDIERS; i++) {
+            let s = document.createElement("img");
+            s.src = "ban2.png"; // Dùng ảnh lính ban2.png
+            s.className = "soldier";
+            s.style.bottom = "20px";
+            s.style.left = (spacing * (i + 1) - 100) + "px"; 
+            
+            // Lật hình cho đẹp
+            if(i < 3) s.style.transform = "scaleX(-1)";
+
+            s.onclick = function() {
+                if (gameState !== "SETUP") return;
+                if (s.dataset.moved) return;
+
+                // Tìm dấu X chưa có ai đứng
+                let targetMarker = markerPositions.find(m => m.dataset.occupied === "false");
+                
+                if (targetMarker) {
+                    s.style.left = (parseInt(targetMarker.style.left) - 75) + "px"; // Căn giữa (-1/2 width lính)
+                    s.style.top = (parseInt(targetMarker.style.top) - 75) + "px";
+                    
+                    s.dataset.moved = "true";
+                    targetMarker.dataset.occupied = "true";
+                    targetMarker.style.opacity = 0; // Ẩn dấu X đi
+                    
+                    soldiersPlaced++;
+
+                    // Nếu xếp đủ lính -> Chiến
+                    if (soldiersPlaced === TOTAL_SOLDIERS) {
+                        setTimeout(startCombatPhase, 1000);
+                    }
+                }
+            };
+            scene.appendChild(s);
+        }
+    }
+
+    // --- PHẦN 2: CHIẾN ĐẤU ---
+    function startCombatPhase() {
+        gameState = "COMBAT";
+        alert("ĐỊCH ĐANG TỚI! HÃY BẤM PHÍM [ENTER] LIÊN TỤC ĐỂ BẮN!");
+        chargeContainer.style.display = "block";
+        
+        bgMusic.play().catch(e => console.log("Trình duyệt chặn tự phát nhạc: ", e));
+
+        enemySpawnInterval = setInterval(spawnEnemy, 2500); // Địch ra mỗi 2.5s
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (gameState === "COMBAT" && e.key === "Enter") {
+            clickCount++;
+            updateChargeBar();
+            
+            if (clickCount >= CLICKS_TO_SHOOT) {
+                fireVolley();
+                clickCount = 0;
+                updateChargeBar();
+            }
+        }
+    });
+
+    function updateChargeBar() {
+        let percent = (clickCount / CLICKS_TO_SHOOT) * 100;
+        chargeBar.style.width = percent + "%";
+        chargeText.innerText = `NẠP ĐẠN: ${clickCount}/${CLICKS_TO_SHOOT}`;
+        
+        if(clickCount > 0) {
+            chargeContainer.style.transform = `translateX(-50%) scale(${1 + clickCount/100})`;
+            setTimeout(() => chargeContainer.style.transform = "translateX(-50%) scale(1)", 50);
+        }
+    }
+
+    function spawnEnemy() {
+        if (enemiesKilled + enemies.length >= TOTAL_ENEMIES) return;
+
+        let e = document.createElement("img");
+        e.src = "quangiac.png";
+        e.className = "enemy";
+        scene.appendChild(e);
+        enemies.push(e);
+
+        // Địch đi từ trên xuống
+        setTimeout(() => {
+            e.style.top = window.innerHeight + "px";
+        }, 100);
+    }
+
+    // Vòng lặp kiểm tra va chạm
+    setInterval(() => {
+        if (gameState !== "COMBAT") return;
+        enemies.forEach((e, index) => {
+            if (e.offsetTop > window.innerHeight - 100) {
+                e.remove();
+                enemies.splice(index, 1);
+                takeDamage();
+            }
+        });
+    }, 500);
+
+    function fireVolley() {
+        shootSound.currentTime = 0;
+        shootSound.play();
+        
+        // Rung màn hình
+        scene.style.transform = "translate(5px, 5px)";
+        setTimeout(() => scene.style.transform = "translate(0,0)", 100);
+
+        if (enemies.length > 0) {
+            // Tìm địch gần nhất
+            enemies.sort((a, b) => b.offsetTop - a.offsetTop);
+            let target = enemies[0];
+            
+            let arrow = document.createElement("img");
+            arrow.src = "muiten.png"; 
+            arrow.className = "arrow";
+            arrow.style.left = "50%";
+            arrow.style.bottom = "100px";
+            arrow.style.top = "auto";
+            scene.appendChild(arrow);
+
+            // Bay tới địch
+            setTimeout(() => {
+                arrow.style.transition = "all 0.2s linear";
+                arrow.style.left = target.offsetLeft + 50 + "px";
+                arrow.style.top = target.offsetTop + 50 + "px";
+            }, 10);
+
+            setTimeout(() => {
+                arrow.remove();
+                killEnemy(target);
+            }, 250);
+        }
+    }
+
+    function killEnemy(enemyElement) {
+        flashDiv.style.opacity = 0.8;
+        setTimeout(() => flashDiv.style.opacity = 0, 100);
+
+        let index = enemies.indexOf(enemyElement);
+        if (index > -1) {
+            enemies.splice(index, 1);
+            enemyElement.remove();
+            enemiesKilled++;
+            enemyCountDisplay.innerText = (TOTAL_ENEMIES - enemiesKilled);
+
+            if (enemiesKilled >= TOTAL_ENEMIES) {
+                gameOver(true);
+            }
+        }
+    }
+
+    function takeDamage() {
+        playerHP--;
+        let hearts = "❤️".repeat(playerHP);
+        playerHpDisplay.innerHTML = hearts;
+        
+        flashDiv.style.background = "red";
+        flashDiv.style.opacity = 0.5;
+        setTimeout(() => {
+            flashDiv.style.opacity = 0;
+            flashDiv.style.background = "white";
+        }, 200);
+
+        if (playerHP <= 0) {
+            gameOver(false);
+        }
+    }
+
+    // --- HÀM KẾT THÚC GAME ---
+    function gameOver(isWin) {
+        gameState = "END";
+        clearInterval(enemySpawnInterval);
+        
+        // Dừng nhạc nền
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+
+        // Xóa hết vật thể thừa
+        document.querySelectorAll('.arrow').forEach(a => a.remove());
+        document.querySelectorAll('.enemy').forEach(e => e.remove());
+
+        // Hiện màn hình kết thúc
+        endScreen.style.display = "flex";
+
+        if (isWin) {
+            winMusic.play().catch(e=>{});
+
+            endMsg.innerHTML = "🎉 ĐẠI THẮNG! 🎉<br><span style='font-size:24px'>Quân địch đã bị quét sạch.</span>";
+            endMsg.style.color = "gold";
+            
+            // Cài đặt nút để qua màn tiếp theo
+            endBtn.innerText = "QUA CẢNH 18: CHI LĂNG - XƯƠNG GIANG >>";
+            endBtn.style.display = "block"; 
+            endBtn.style.backgroundColor = "#4CAF50"; 
+            
+            endBtn.onclick = function() {
+                window.location.href = NEXT_PAGE_URL;
+            };
+
+        } else {
+            endMsg.innerText = "☠️ THẤT THỦ! ☠️";
+            endMsg.style.color = "red";
+            endBtn.innerText = "CHƠI LẠI";
+            endBtn.style.display = "block";
+            endBtn.style.backgroundColor = "darkred";
+            
+            endBtn.onclick = function() {
+                 location.reload();
+            };
+        }
+    }
+</script>
+</body>
+</html>

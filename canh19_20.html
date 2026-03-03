@@ -83,9 +83,10 @@
         <div id="end-game-screen">
             <div class="end-title">ĐẠI VIỆT TOÀN THẮNG</div>
             <div class="end-subtitle">Triều đại Hậu Lê chính thức bắt đầu, mở ra kỷ nguyên độc lập thịnh trị.</div>
-            <button class="game-btn" onclick="alert('Hết game rồi má ơi!')">KẾT THÚC</button>
-        </div>
-    </div>
+            <button class="game-btn" onclick="window.location.href='index.html'">
+        KHỞI ĐỘNG LẠI TRÒ CHƠI ↻
+    </button>
+</div>
 
     <script>
         // --- HÀM HỖ TRỢ ---
@@ -123,7 +124,7 @@
             playSound('chucmung-sound');
             
             // Nội dung chạy chữ
-            const content = "Lê Lợi chính thức lên ngôi Hoàng đế, hình thành nhà Hậu Lê.<br>Sau đó, Vua sai Nguyễn Trãi thay lời viết <strong>Bình Ngô Đại Cáo</strong> để tuyên bố chiến thắng, giành lại độc lập cho Đại Việt.";
+            const content = "Lê Lợi chính thức lên ngôi Hoàng đế, hình thành nhà Hậu Lê.<br>Sau đó, Vua sai Nguyễn Trãi thay lời viết Bình Ngô Đại Cáo để tuyên bố chiến thắng, giành lại độc lập cho Đại Việt.";
             
             typeWriter(content, 's18-typewriter', 40);
         }
