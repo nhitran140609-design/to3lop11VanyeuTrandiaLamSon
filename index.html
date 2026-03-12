@@ -687,7 +687,7 @@
             isBurning = true;
             burnInterval = setInterval(() => {
                 burningTime++;
-                if (burningTime >= 20) { // 20 đơn vị thời gian (tương đối)
+                if (burningTime >= 0) { // 0 đơn vị thời gian (tương đối)
                     winFireGame();
                 }
             }, 1000); // 1 giây tăng 1 lần
